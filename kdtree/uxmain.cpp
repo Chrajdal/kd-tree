@@ -2,20 +2,26 @@
 #include <iostream>
 #include <iomanip>
 #include <fstream>
+#include <cassert>
 #include <vector>
 #include <chrono>
 #include <cstdio>
+#include <random>
 #include <deque>
 #include <cmath>
 #include <ctime>
-
+#include <list>
 using namespace std;
 using namespace std::chrono;
 
-#define GMINY 0.0f
-#define GMAXY 1000.0f
-#define GMINX 0.0f
-#define GMAXX 1000.0f
+constexpr double GMINY = -1000.0;
+constexpr double GMAXY = 1000.0;
+constexpr double GMINX = -1000.0;
+constexpr double GMAXX = 1000.0;
+
+constexpr double alignment_weight = 5.0f;
+constexpr double separation_weight = 5.0f;
+constexpr double cohesion_weight = 5.0f;
 
 //-----------------------------------------------------------------------------
 class Graphics
@@ -25,38 +31,11 @@ public:
 	static constexpr int ScreenHeight = 1000;
 };
 
-constexpr float PI = 3.14159265f;
-constexpr double PI_D = 3.1415926535897932;
+constexpr double PI = std::acos(-1);
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-ostream & nl(ostream & os)
-{
-	return os << "\n";
-}
-//-----------------------------------------------------------------------------
-
-//-----------------------------------------------------------------------------
-template <typename T>
-inline auto sq(const T & x)
-{
-	return x * x;
-}
-
-template<typename T>
-inline T wrap_angle(T theta)
-{
-	const T modded = fmod(theta, (T)2.0 * (T)PI_D);
-	return (modded > (T)PI_D) ?
-		(modded - (T)2.0 * (T)PI_D) :
-		modded;
-}
-
-template<typename T>
-inline T interpolate(const T& src, const T& dst, float alpha)
-{
-	return src + (dst - src) * alpha;
-}
+inline ostream & nl(ostream & os) { return os << "\n"; }
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
@@ -166,7 +145,7 @@ public:
 	T y;
 };
 
-typedef _Vec2<float> Vec2;
+typedef _Vec2<double> Vec2;
 typedef _Vec2<double> Ved2;
 typedef _Vec2<int> Vei2;
 //-----------------------------------------------------------------------------
@@ -279,12 +258,11 @@ private:
 
 //-----------------------------------------------------------------------------
 int random_int(int min, int max);
-float random_between(const float & min, const float & max);
 double random_between(const double & min, const double & max);
 
 long sq_distance(const Tpoint<int> & a, const Tpoint<int> & b);
 long long sq_distance(const Tpoint <long> & a, const Tpoint<long> & b);
-double sq_distance(const Tpoint<float> & a, const Tpoint<float> & b);
+double sq_distance(const Tpoint<double> & a, const Tpoint<double> & b);
 double sq_distance(const Tpoint<double> & a, const Tpoint<double> & b);
 
 template<typename T>
@@ -295,18 +273,18 @@ Tpoint<T> get_closest_p(const Trect<T> & rect, const Tpoint<T> & p);
 class node_f
 {
 public:
-	node_f(const Tpoint<float> & p = {},
-		const Trect<float> upleft_rect = {},
-		const Trect<float> m_upright_rect = {},
-		const Trect<float> m_downleft_rect = {},
-		const Trect<float> m_downright_rect = {});
+	node_f(const Tpoint<double> & p = {},
+		const Trect<double> upleft_rect = {},
+		const Trect<double> m_upright_rect = {},
+		const Trect<double> m_downleft_rect = {},
+		const Trect<double> m_downright_rect = {});
 	node_f(const node_f & src);
 	node_f & operator=(const node_f & src);
 	~node_f(void);
-	void insert(const Tpoint<float> & p, const node_f * parent);
+	void insert(const Tpoint<double> & p, const node_f * parent);
 	void insert(const node_f & p, const node_f * parent);
-	Tpoint<float> find_closest_point(const Tpoint<float> & p, Tpoint<float> & closest, double & best_dist) const;
-	vector<node_f> find_n_closest_points(const Tpoint<float> & p, int n, vector<node_f> & found) const;
+	Tpoint<double> find_closest_point(const Tpoint<double> & p, Tpoint<double> & closest, double & best_dist) const;
+	vector<node_f> find_n_closest_points(const Tpoint<double> & p, int n, vector<node_f> & found) const;
 
 	friend ostream & operator << (ostream & os, const node_f & src)
 	{
@@ -318,9 +296,9 @@ public:
 		return os;
 	}
 public:
-	Tpoint<float> m_p;
-	_Vec2<float> m_velocity;
-	Trect<float> m_ul_r, m_ur_r, m_dl_r, m_dr_r;
+	Tpoint<double> m_p;
+	Trect<double> m_ul_r, m_ur_r, m_dl_r, m_dr_r;
+	_Vec2<double> m_velocity;
 	node_f * m_ul, *m_ur, *m_dl, *m_dr;
 };
 //-----------------------------------------------------------------------------
@@ -334,12 +312,12 @@ public:
 	quad_tree_f & operator = (const quad_tree_f & src);
 	~quad_tree_f(void);
 
-	void insert(float x, float y);
-	void insert(const Tpoint<float> & p);
+	void insert(double x, double y);
+	void insert(const Tpoint<double> & p);
 	void insert(const node_f & n);
 	void clear(void);
-	Tpoint<float> find_closest_point(const Tpoint<float> & p) const;
-	vector<node_f> find_n_closest_points(const Tpoint<float> & p, int n);
+	Tpoint<double> find_closest_point(const Tpoint<double> & p) const;
+	vector<node_f> find_n_closest_points(const Tpoint<double> & p, int n);
 
 	friend ostream & operator << (ostream & os, const quad_tree_f & src)
 	{
@@ -358,10 +336,6 @@ int random_int(int min, int max)
 	int range = max - min + 1;
 	return (rand() % range) + min;
 }
-float random_between(const float & min, const float & max)
-{
-	return (max - min) * ((float)rand() / (float)RAND_MAX) + min;
-}
 double random_between(const double & min, const double & max)
 {
 	return (max - min) * ((double)rand() / (double)RAND_MAX) + min;
@@ -376,11 +350,6 @@ long long sq_distance(const Tpoint <long> & a, const Tpoint<long> & b)
 {
 	return (long)((a.m_x - b.m_x) * (long)(a.m_x - b.m_x))
 		+ (long)((a.m_y - b.m_y) * (long)(a.m_y - b.m_y));
-}
-double sq_distance(const Tpoint<float> & a, const Tpoint<float> & b)
-{
-	return (double)((a.m_x - b.m_x) * (double)(a.m_x - b.m_x))
-		+ (double)((a.m_y - b.m_y) * (double)(a.m_y - b.m_y));
 }
 double sq_distance(const Tpoint<double> & a, const Tpoint<double> & b)
 {
@@ -446,11 +415,11 @@ Tpoint<T> get_closest_p(const Trect<T> & rect, const Tpoint<T> & p)
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-node_f::node_f(const Tpoint<float> & p,
-	const Trect<float> upleft_rect,
-	const Trect<float> upright_rect,
-	const Trect<float> downleft_rect,
-	const Trect<float> downright_rect)
+node_f::node_f(const Tpoint<double> & p,
+	const Trect<double> upleft_rect,
+	const Trect<double> upright_rect,
+	const Trect<double> downleft_rect,
+	const Trect<double> downright_rect)
 	: m_p(p),
 	m_ul_r(upleft_rect),
 	m_ur_r(upright_rect),
@@ -507,7 +476,7 @@ node_f::~node_f(void)
 	delete m_dr; m_dr = NULL;
 }
 
-void node_f::insert(const Tpoint<float> & p, const node_f * parent)
+void node_f::insert(const Tpoint<double> & p, const node_f * parent)
 {
 	if (m_p.m_x == p.m_x && m_p.m_y == p.m_y)
 		return;
@@ -519,17 +488,17 @@ void node_f::insert(const Tpoint<float> & p, const node_f * parent)
 			if (m_ul == NULL)
 			{
 				m_ul = new node_f(p);
-				float MIN_X = parent->m_ul_r.m_upleft.m_x;
-				float MID_X = p.m_x;
-				float MAX_X = parent->m_ul_r.m_downright.m_x;
-				float MIN_Y = parent->m_ul_r.m_upleft.m_y;
-				float MID_Y = p.m_y;
-				float MAX_Y = parent->m_ul_r.m_downright.m_y;
+				double MIN_X = parent->m_ul_r.m_upleft.m_x;
+				double MID_X = p.m_x;
+				double MAX_X = parent->m_ul_r.m_downright.m_x;
+				double MIN_Y = parent->m_ul_r.m_upleft.m_y;
+				double MID_Y = p.m_y;
+				double MAX_Y = parent->m_ul_r.m_downright.m_y;
 
-				m_ul->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_ul->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_ul->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_ul->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_ul->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_ul->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_ul->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_ul->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -541,17 +510,17 @@ void node_f::insert(const Tpoint<float> & p, const node_f * parent)
 			if (m_ur == NULL)
 			{
 				m_ur = new node_f(p);
-				float MIN_X = parent->m_ur_r.m_upleft.m_x;
-				float MID_X = p.m_x;
-				float MAX_X = parent->m_ur_r.m_downright.m_x;
-				float MIN_Y = parent->m_ur_r.m_upleft.m_y;
-				float MID_Y = p.m_y;
-				float MAX_Y = parent->m_ur_r.m_downright.m_y;
+				double MIN_X = parent->m_ur_r.m_upleft.m_x;
+				double MID_X = p.m_x;
+				double MAX_X = parent->m_ur_r.m_downright.m_x;
+				double MIN_Y = parent->m_ur_r.m_upleft.m_y;
+				double MID_Y = p.m_y;
+				double MAX_Y = parent->m_ur_r.m_downright.m_y;
 
-				m_ur->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_ur->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_ur->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_ur->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_ur->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_ur->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_ur->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_ur->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -566,17 +535,17 @@ void node_f::insert(const Tpoint<float> & p, const node_f * parent)
 			if (m_dl == NULL)
 			{
 				m_dl = new node_f(p);
-				float MIN_X = parent->m_dl_r.m_upleft.m_x;
-				float MID_X = p.m_x;
-				float MAX_X = parent->m_dl_r.m_downright.m_x;
-				float MIN_Y = parent->m_dl_r.m_upleft.m_y;
-				float MID_Y = p.m_y;
-				float MAX_Y = parent->m_dl_r.m_downright.m_y;
+				double MIN_X = parent->m_dl_r.m_upleft.m_x;
+				double MID_X = p.m_x;
+				double MAX_X = parent->m_dl_r.m_downright.m_x;
+				double MIN_Y = parent->m_dl_r.m_upleft.m_y;
+				double MID_Y = p.m_y;
+				double MAX_Y = parent->m_dl_r.m_downright.m_y;
 
-				m_dl->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_dl->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_dl->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_dl->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_dl->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_dl->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_dl->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_dl->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -588,17 +557,17 @@ void node_f::insert(const Tpoint<float> & p, const node_f * parent)
 			if (m_dr == NULL)
 			{
 				m_dr = new node_f(p);
-				float MIN_X = parent->m_dr_r.m_upleft.m_x;
-				float MID_X = p.m_x;
-				float MAX_X = parent->m_dr_r.m_downright.m_x;
-				float MIN_Y = parent->m_dr_r.m_upleft.m_y;
-				float MID_Y = p.m_y;
-				float MAX_Y = parent->m_dr_r.m_downright.m_y;
+				double MIN_X = parent->m_dr_r.m_upleft.m_x;
+				double MID_X = p.m_x;
+				double MAX_X = parent->m_dr_r.m_downright.m_x;
+				double MIN_Y = parent->m_dr_r.m_upleft.m_y;
+				double MID_Y = p.m_y;
+				double MAX_Y = parent->m_dr_r.m_downright.m_y;
 
-				m_dr->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_dr->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_dr->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_dr->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_dr->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_dr->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_dr->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_dr->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -622,17 +591,17 @@ void node_f::insert(const node_f & n, const node_f * parent)
 				m_ul = new node_f(n.m_p);
 				m_ul->m_velocity = n.m_velocity;
 
-				float MIN_X = parent->m_ul_r.m_upleft.m_x;
-				float MID_X = n.m_p.m_x;
-				float MAX_X = parent->m_ul_r.m_downright.m_x;
-				float MIN_Y = parent->m_ul_r.m_upleft.m_y;
-				float MID_Y = n.m_p.m_y;
-				float MAX_Y = parent->m_ul_r.m_downright.m_y;
+				double MIN_X = parent->m_ul_r.m_upleft.m_x;
+				double MID_X = n.m_p.m_x;
+				double MAX_X = parent->m_ul_r.m_downright.m_x;
+				double MIN_Y = parent->m_ul_r.m_upleft.m_y;
+				double MID_Y = n.m_p.m_y;
+				double MAX_Y = parent->m_ul_r.m_downright.m_y;
 
-				m_ul->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_ul->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_ul->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_ul->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_ul->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_ul->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_ul->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_ul->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -646,17 +615,17 @@ void node_f::insert(const node_f & n, const node_f * parent)
 				m_ur = new node_f(n.m_p);
 				m_ur->m_velocity = n.m_velocity;
 
-				float MIN_X = parent->m_ur_r.m_upleft.m_x;
-				float MID_X = n.m_p.m_x;
-				float MAX_X = parent->m_ur_r.m_downright.m_x;
-				float MIN_Y = parent->m_ur_r.m_upleft.m_y;
-				float MID_Y = n.m_p.m_y;
-				float MAX_Y = parent->m_ur_r.m_downright.m_y;
+				double MIN_X = parent->m_ur_r.m_upleft.m_x;
+				double MID_X = n.m_p.m_x;
+				double MAX_X = parent->m_ur_r.m_downright.m_x;
+				double MIN_Y = parent->m_ur_r.m_upleft.m_y;
+				double MID_Y = n.m_p.m_y;
+				double MAX_Y = parent->m_ur_r.m_downright.m_y;
 
-				m_ur->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_ur->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_ur->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_ur->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_ur->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_ur->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_ur->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_ur->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -673,17 +642,17 @@ void node_f::insert(const node_f & n, const node_f * parent)
 				m_dl = new node_f(n.m_p);
 				m_dl->m_velocity = n.m_velocity;
 
-				float MIN_X = parent->m_dl_r.m_upleft.m_x;
-				float MID_X = n.m_p.m_x;
-				float MAX_X = parent->m_dl_r.m_downright.m_x;
-				float MIN_Y = parent->m_dl_r.m_upleft.m_y;
-				float MID_Y = n.m_p.m_y;
-				float MAX_Y = parent->m_dl_r.m_downright.m_y;
+				double MIN_X = parent->m_dl_r.m_upleft.m_x;
+				double MID_X = n.m_p.m_x;
+				double MAX_X = parent->m_dl_r.m_downright.m_x;
+				double MIN_Y = parent->m_dl_r.m_upleft.m_y;
+				double MID_Y = n.m_p.m_y;
+				double MAX_Y = parent->m_dl_r.m_downright.m_y;
 
-				m_dl->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_dl->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_dl->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_dl->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_dl->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_dl->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_dl->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_dl->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -697,17 +666,17 @@ void node_f::insert(const node_f & n, const node_f * parent)
 				m_dr = new node_f(n.m_p);
 				m_dr->m_velocity = n.m_velocity;
 
-				float MIN_X = parent->m_dr_r.m_upleft.m_x;
-				float MID_X = n.m_p.m_x;
-				float MAX_X = parent->m_dr_r.m_downright.m_x;
-				float MIN_Y = parent->m_dr_r.m_upleft.m_y;
-				float MID_Y = n.m_p.m_y;
-				float MAX_Y = parent->m_dr_r.m_downright.m_y;
+				double MIN_X = parent->m_dr_r.m_upleft.m_x;
+				double MID_X = n.m_p.m_x;
+				double MAX_X = parent->m_dr_r.m_downright.m_x;
+				double MIN_Y = parent->m_dr_r.m_upleft.m_y;
+				double MID_Y = n.m_p.m_y;
+				double MAX_Y = parent->m_dr_r.m_downright.m_y;
 
-				m_dr->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-				m_dr->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-				m_dr->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-				m_dr->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+				m_dr->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+				m_dr->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+				m_dr->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+				m_dr->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 			}
 			else
 			{
@@ -717,7 +686,7 @@ void node_f::insert(const node_f & n, const node_f * parent)
 	}
 }
 
-Tpoint<float> node_f::find_closest_point(const Tpoint<float> & p, Tpoint<float> & closest, double & best_dist) const
+Tpoint<double> node_f::find_closest_point(const Tpoint<double> & p, Tpoint<double> & closest, double & best_dist) const
 {
 	double dist = sq_distance(p, m_p);
 	if (dist < best_dist)
@@ -738,9 +707,27 @@ Tpoint<float> node_f::find_closest_point(const Tpoint<float> & p, Tpoint<float> 
 	return closest;
 }
 
-vector<node_f> node_f::find_n_closest_points(const Tpoint<float> & p, int n, vector<node_f> & found) const
+vector<node_f> node_f::find_n_closest_points(const Tpoint<double> & p, int n, vector<node_f> & found) const
 {
-	if (found.size() < n)
+	if (found.empty())
+		found.push_back(m_p);
+	else
+	{
+		auto it = lower_bound(found.begin(), found.end(), m_p,
+				[p](const node_f & a, const node_f & b)
+			{ return sq_distance(a.m_p, p) <= sq_distance(b.m_p, p); });
+		
+		found.insert(it, m_p);
+
+		if ((int)found.size() > n)
+			found.pop_back();
+	}
+	
+	/*
+	//
+	// if number of points hasn't reached n-points yet, we can push to the right position
+	//
+	if ((int)found.size() < n)
 	{
 		if (found.empty())
 			found.push_back(m_p);
@@ -752,21 +739,30 @@ vector<node_f> node_f::find_n_closest_points(const Tpoint<float> & p, int n, vec
 			found.insert(it, m_p);
 		}
 	}
+	//
+	// number of point exceeded n so we have to binary search through found
+	// to insert better solution then kick last one
+	//
 	else
 	{
+		// not binary search - but working brute force:
 		double curr_dist = sq_distance(p, m_p);
 		for (auto it = found.begin(); it != found.end(); ++it)
 		{
 			if (curr_dist <= sq_distance(p, it->m_p))
 			{
 				found.insert(it, m_p);
-				if (found.size() >= n)
+				if ((int)found.size() >= n)
 					found.pop_back();
 				break;
 			}
 		}
 	}
+	*/
 
+	//
+	// continue searching through appropriate branch
+	//
 	if (m_ul != NULL)
 		if (sq_distance(get_closest_p(m_ul_r, p), p) <= sq_distance(p, found.back().m_p))
 			m_ul->find_n_closest_points(p, n, found);
@@ -812,12 +808,12 @@ quad_tree_f::~quad_tree_f(void)
 	m_root = NULL;
 }
 
-inline void quad_tree_f::insert(float x, float y)
+inline void quad_tree_f::insert(double x, double y)
 {
-	insert(Tpoint<float>(x, y));
+	insert(Tpoint<double>(x, y));
 }
 
-void quad_tree_f::insert(const Tpoint<float> & p)
+void quad_tree_f::insert(const Tpoint<double> & p)
 {
 	if (p.m_x < GMINX || p.m_x >= GMAXX || p.m_y < GMINY || p.m_y >= GMAXY)
 		return;
@@ -825,17 +821,17 @@ void quad_tree_f::insert(const Tpoint<float> & p)
 	if (m_root == NULL)
 	{
 		m_root = new node_f(p);
-		float MIN_X = GMINX;
-		float MID_X = p.m_x;
-		float MAX_X = GMAXX;
-		float MIN_Y = GMINY;
-		float MID_Y = p.m_y;
-		float MAX_Y = GMAXY;
+		double MIN_X = GMINX;
+		double MID_X = p.m_x;
+		double MAX_X = GMAXX;
+		double MIN_Y = GMINY;
+		double MID_Y = p.m_y;
+		double MAX_Y = GMAXY;
 
-		m_root->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-		m_root->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-		m_root->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-		m_root->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+		m_root->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+		m_root->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+		m_root->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+		m_root->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 	}
 	else
 	{
@@ -853,17 +849,17 @@ void quad_tree_f::insert(const node_f & n)
 		m_root = new node_f(n.m_p);
 		m_root->m_velocity = n.m_velocity;
 
-		float MIN_X = GMINX;
-		float MID_X = n.m_p.m_x;
-		float MAX_X = GMAXX;
-		float MIN_Y = GMINY;
-		float MID_Y = n.m_p.m_y;
-		float MAX_Y = GMAXY;
+		double MIN_X = GMINX;
+		double MID_X = n.m_p.m_x;
+		double MAX_X = GMAXX;
+		double MIN_Y = GMINY;
+		double MID_Y = n.m_p.m_y;
+		double MAX_Y = GMAXY;
 
-		m_root->m_ul_r = Trect<float>(Tpoint<float>(MIN_X, MIN_Y), Tpoint<float>(MID_X, MID_Y));
-		m_root->m_ur_r = Trect<float>(Tpoint<float>(MID_X, MIN_Y), Tpoint<float>(MAX_X, MID_Y));
-		m_root->m_dl_r = Trect<float>(Tpoint<float>(MIN_X, MID_Y), Tpoint<float>(MID_X, MAX_Y));
-		m_root->m_dr_r = Trect<float>(Tpoint<float>(MID_X, MID_Y), Tpoint<float>(MAX_X, MAX_Y));
+		m_root->m_ul_r = Trect<double>(Tpoint<double>(MIN_X, MIN_Y), Tpoint<double>(MID_X, MID_Y));
+		m_root->m_ur_r = Trect<double>(Tpoint<double>(MID_X, MIN_Y), Tpoint<double>(MAX_X, MID_Y));
+		m_root->m_dl_r = Trect<double>(Tpoint<double>(MIN_X, MID_Y), Tpoint<double>(MID_X, MAX_Y));
+		m_root->m_dr_r = Trect<double>(Tpoint<double>(MID_X, MID_Y), Tpoint<double>(MAX_X, MAX_Y));
 	}
 	else
 	{
@@ -877,19 +873,19 @@ void quad_tree_f::clear(void)
 	m_root = NULL;
 }
 
-Tpoint<float> quad_tree_f::find_closest_point(const Tpoint<float> & p) const
+Tpoint<double> quad_tree_f::find_closest_point(const Tpoint<double> & p) const
 {
 	if (m_root == NULL)
-		return Tpoint<float>();
+		return Tpoint<double>();
 	else
 	{
 		double best_dist = sq_distance(p, m_root->m_p);
-		Tpoint<float> closest(m_root->m_p);
+		Tpoint<double> closest(m_root->m_p);
 		return m_root->find_closest_point(p, closest, best_dist);
 	}
 }
 
-vector<node_f> quad_tree_f::find_n_closest_points(const Tpoint<float> & p, int n)
+vector<node_f> quad_tree_f::find_n_closest_points(const Tpoint<double> & p, int n)
 {
 	if (m_root == NULL)
 	{
@@ -905,9 +901,9 @@ vector<node_f> quad_tree_f::find_n_closest_points(const Tpoint<float> & p, int n
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-_Vec2<float> update_alignment(const vector<node_f> & closest_points, node_f & n)
+_Vec2<double> update_alignment(const vector<node_f> & closest_points, node_f & n)
 {
-	_Vec2<float> v (0.0f, 0.0f);
+	_Vec2<double> v (0.0f, 0.0f);
 	if(closest_points.empty())
 		return v;
 
@@ -922,9 +918,9 @@ _Vec2<float> update_alignment(const vector<node_f> & closest_points, node_f & n)
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-_Vec2<float> update_separation(const vector<node_f> & closest_points, node_f & n)
+_Vec2<double> update_separation(const vector<node_f> & closest_points, node_f & n)
 {
-	_Vec2<float> v (0, 0);
+	_Vec2<double> v (0, 0);
 	if(closest_points.empty())
 		return v;
 
@@ -932,8 +928,8 @@ _Vec2<float> update_separation(const vector<node_f> & closest_points, node_f & n
 	{
 		if (i.m_p != n.m_p)
 		{
-			v.x += i.m_p.m_x - n.m_p.m_x;
-			v.y += i.m_p.m_y - n.m_p.m_y;
+			v.x += (i.m_p.m_x - n.m_p.m_x);
+			v.y += (i.m_p.m_y - n.m_p.m_y);
 		}
 	}
 
@@ -945,9 +941,9 @@ _Vec2<float> update_separation(const vector<node_f> & closest_points, node_f & n
 //-----------------------------------------------------------------------------
 
 //-----------------------------------------------------------------------------
-_Vec2<float> update_cohesion(const vector<node_f> & closest_points, node_f & n)
+_Vec2<double> update_cohesion(const vector<node_f> & closest_points, node_f & n)
 {
-	_Vec2<float> v (0, 0);
+	_Vec2<double> v (0, 0);
 	if(closest_points.empty())
 		return v;
 
@@ -960,8 +956,8 @@ _Vec2<float> update_cohesion(const vector<node_f> & closest_points, node_f & n)
 		}
 	}
 
-	v.x /= closest_points.size() - 1;
-	v.y /= closest_points.size() - 1;
+	v.x /= (closest_points.size() - 1);
+	v.y /= (closest_points.size() - 1);
 
 	return v;
 }
@@ -970,24 +966,20 @@ _Vec2<float> update_cohesion(const vector<node_f> & closest_points, node_f & n)
 //-----------------------------------------------------------------------------
 void test_update_node(quad_tree_f & t, node_f & n, quad_tree_f & nt)
 {
-	vector<node_f> closest_points = t.find_n_closest_points(n.m_p, 50);
+	vector<node_f> closest_points = t.find_n_closest_points(n.m_p, 10);
 
-	_Vec2<float> alignment (0, 0);
-	_Vec2<float> separation (0, 0);
-	_Vec2<float> cohesion (0, 0);
+	_Vec2<double> alignment (0, 0);
+	_Vec2<double> separation (0, 0);
+	_Vec2<double> cohesion (0, 0);
 
-	alignment = update_alignment(closest_points, n);
-	separation = update_separation(closest_points, n);
-	cohesion = update_cohesion(closest_points, n);
-
-	float alignment_weight = 5.0f;
-	float separation_weight = 5.0f;
-	float cohesion_weight = 5.0f;
+	//alignment = update_alignment(closest_points, n);
+	//separation = update_separation(closest_points, n);
+	//cohesion = update_cohesion(closest_points, n);
 
 	n.m_velocity.x += alignment.x * alignment_weight + separation.x * separation_weight + cohesion.x * cohesion_weight;
 	n.m_velocity.y += alignment.y * alignment_weight + separation.y * separation_weight + cohesion.y * cohesion_weight;
 
-	float length = sqrt(n.m_velocity.x * n.m_velocity.x + n.m_velocity.y * n.m_velocity.y);
+	double length = sqrt(n.m_velocity.x * n.m_velocity.x + n.m_velocity.y * n.m_velocity.y);
 	if(length >= 5.0f)
 	{
 		n.m_velocity.x /= length;
@@ -997,14 +989,14 @@ void test_update_node(quad_tree_f & t, node_f & n, quad_tree_f & nt)
 	n.m_p.m_x += n.m_velocity.x;
 	n.m_p.m_y += n.m_velocity.y;
 
-	if (n.m_p.m_x >= float(Graphics::ScreenWidth))
-		n.m_p.m_x = float((int)(n.m_p.m_x) % Graphics::ScreenWidth);
+	if (n.m_p.m_x >= double(Graphics::ScreenWidth))
+		n.m_p.m_x = double((int)(n.m_p.m_x) % Graphics::ScreenWidth);
 	if (n.m_p.m_x < 0.0f)
-		n.m_p.m_x += (float)Graphics::ScreenWidth;
-	if (n.m_p.m_y >= float(Graphics::ScreenHeight))
-		n.m_p.m_y = float((int)(n.m_p.m_y) % Graphics::ScreenHeight);
+		n.m_p.m_x += (double)Graphics::ScreenWidth;
+	if (n.m_p.m_y >= double(Graphics::ScreenHeight))
+		n.m_p.m_y = double((int)(n.m_p.m_y) % Graphics::ScreenHeight);
 	if (n.m_p.m_y < 0.0f)
-		n.m_p.m_y += (float)Graphics::ScreenHeight;
+		n.m_p.m_y += (double)Graphics::ScreenHeight;
 
 	if (n.m_ul != NULL)	test_update_node(t, *n.m_ul, nt);
 	if (n.m_ur != NULL)	test_update_node(t, *n.m_ur, nt);
@@ -1025,19 +1017,18 @@ void test_update_tree(quad_tree_f & t)
 void local_test(void)
 {
 	quad_tree_f t, nt;
-	int xsize = 100;
-	for (int i = 0; i < xsize; ++i)
+	int tree_size = 100;
+	for (int i = 0; i < tree_size; ++i)
 	{
-		node_f x(Tpoint<float>(random_between(GMINX, GMAXX),random_between(GMINY, GMAXY)));
-		x.m_velocity = _Vec2<float>(random_between(-5.0f, 5.0f), random_between(-5.0f, 5.0f));
+		node_f x(Tpoint<double>(random_between(GMINX, GMAXX),random_between(GMINY, GMAXY)));
+		x.m_velocity = _Vec2<double>(random_between(-1.0, 1.0), random_between(-1.0, 1.0));
 		t.insert(x);
 	}
 	
-	for(int i = 0; i < 10; ++i)
+	for(int i = 0; i < 1; ++i)
+	{
 		test_update_tree(t);
-
-	swap(t, nt);
-	swap(t, nt);
+	}
 }
 //-----------------------------------------------------------------------------
 
@@ -1045,12 +1036,92 @@ void local_test(void)
 int main(void)
 {
 	srand(unsigned(time(0)));
+	std::random_device rd;
+    std::mt19937 g(rd());
 
-	for (int i = 0; i < 1; ++i)
-	{
-		local_test();
-	}
+    std::vector<node_f> v;
+    std::deque<node_f> d;
+    std::list<node_f> l;
+    int n = 150;
+    int count = 1000000;
 
+    double time_vec = 0.0;
+    double time_deq = 0.0;
+    double time_lis = 0.0;
+
+    //-----------------------------------------------------------------------------------
+    for(int i = 0; i < count; ++i)
+    {
+    	Tpoint<double> p { random_between(-100.0, 100.0), random_between(-100.0, 100.0)};
+    	Tpoint<double> m_p { random_between(-100.0, 100.0), random_between(-100.0, 100.0)};
+
+    	CTimer timer_vec;
+    	if (v.empty())
+			v.push_back(m_p);
+		else
+		{
+			auto it = lower_bound(v.begin(), v.end(), m_p,
+					[p](const node_f & a, const node_f & b)
+					{ return sq_distance(a.m_p, p) <= sq_distance(b.m_p, p); });
+		
+			v.insert(it, m_p);
+
+			if ((int)v.size() > n)
+				v.pop_back();
+		}
+		time_vec += timer_vec.elapsed();
+		//++++++++++++++++++++++++++++++++++++
+		CTimer timer_deq;
+		if (d.empty())
+			d.push_back(m_p);
+		else
+		{
+			auto it = lower_bound(d.begin(), d.end(), m_p,
+					[p](const node_f & a, const node_f & b)
+					{ return sq_distance(a.m_p, p) <= sq_distance(b.m_p, p); });
+		
+			d.insert(it, m_p);
+
+			if ((int)d.size() > n)
+				d.pop_back();
+		}
+		time_deq += timer_deq.elapsed();
+		//++++++++++++++++++++++++++++++++++++
+		CTimer timer_lis;
+		if (l.empty())
+			l.push_back(m_p);
+		else
+		{
+			auto it = lower_bound(l.begin(), l.end(), m_p,
+					[p](const node_f & a, const node_f & b)
+					{ return sq_distance(a.m_p, p) <= sq_distance(b.m_p, p); });
+		
+			l.insert(it, m_p);
+
+			if ((int)l.size() > n)
+				l.pop_back();
+		}
+		time_lis += timer_lis.elapsed();
+    }
+    //-----------------------------------------------------------------------------------
+
+    // kontrola ze je vse spravne:
+    auto itv = v.begin();
+    auto itd = d.begin();
+    auto itl = l.begin();
+    for(; itv != v.end() && itd != d.end() && itl != l.end();)
+    {
+    	assert(itv->m_p == itd->m_p);
+    	assert(itv->m_p == itl->m_p);
+    	assert(itd->m_p == itl->m_p);
+    	++itv; ++itd; ++itl;
+    }
+
+    cout << "vec :" << time_vec << " milliseconds" << nl;
+    cout << "deq :" << time_deq << " milliseconds" << nl;
+    cout << "lis :" << time_lis << " milliseconds" << nl;
+
+	//system("PAUSE");
 	return 0;
 }
 //-----------------------------------------------------------------------------
